@@ -1,3 +1,8 @@
+// Nush Shell (To be rebranded soon)
+// An ultra-lightweight POSIX-style shell
+// Thomas Kaunzinger - Fall 2019
+
+// Relevant library imports
 #include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
@@ -5,66 +10,122 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 
-void
-execute(char* cmd)
-{
-    int cpid;
+#include "tokens.h"
+#include "svec.h"
 
-    if ((cpid = fork())) {
-        // parent process
-        printf("Parent pid: %d\n", getpid());
-        printf("Parent knows child pid: %d\n", cpid);
+// User variables stored here
+// TODO: Update my hashmap implementation so that it uses arbitrary length string keys so that
+// I no longer have to use nasty linear time association vectors just to store variables.
+svec* variableNames = make_svec();
+svec* variableValues = make_svec();
 
-        // Child may still be running until we wait.
+// Executest the received command gamer style
+void execute(char* cmd) {
 
-        int status;
-        waitpid(cpid, &status, 0);
+	svec* tokens = tokenize(cmd);
 
-        printf("== executed program complete ==\n");
+	int cpid;
+	int exitCode = 0;
 
-        printf("child returned with wait code %d\n", status);
-        if (WIFEXITED(status)) {
-            printf("child exited with exit code (or main returned) %d\n", WEXITSTATUS(status));
-        }
-    }
-    else {
-        // child process
-        printf("Child pid: %d\n", getpid());
-        printf("Child knows parent pid: %d\n", getppid());
+	// Parent process
+	if ((cpid = fork())) {
+		// parent process
+		// printf("Parent pid: %d\n", getpid());
+		// printf("Parent knows child pid: %d\n", cpid);
 
-        for (int ii = 0; ii < strlen(cmd); ++ii) {
-            if (cmd[ii] == ' ') {
-                cmd[ii] = 0;
-                break;
-            }
-        }
+		// Waits for the child process to terminate
+		int status;
+		waitpid(cpid, &status, 0);
 
-        // The argv array for the child.
-        // Terminated by a null pointer.
-        char* args[] = {cmd, "one", 0};
+		if (WIFEXITED(status)) {
+			printf("child exited with exit code (or main returned) %d\n", WEXITSTATUS(status));
+		}
+	}
+	// Child process
+	else {
+		// child process
+		// printf("Child pid: %d\n", getpid());
+		// printf("Child knows parent pid: %d\n", getppid());
 
-        printf("== executed program's output: ==\n");
+		// Executes the individual tokens
+		for (int ii = 0; ii < tokens->size; ii++) {
+			char* currentToken = tokens->data;
+			
+			// Exit command
+			if (!strcmp(currentToken, "exit")) {
+				exit(0);
+			}
+			else if (!strcmp(currentToken, ";")) {
 
-        execvp(cmd, args);
-        printf("Can't get here, exec only returns on error.");
-    }
+			}
+			else if (!strcmp(currentToken, "<")) {
+
+			}
+			else if (!strcmp(currentToken, ">")) {
+
+			}
+			else if (!strcmp(currentToken, "|")) {
+
+			}
+			else if (!strcmp(currentToken, "&")) {
+
+			}
+			else if (!strcmp(currentToken, "||")) {
+
+			}
+			else if (!strcmp(currentToken, "&&")) {
+
+			}
+			else if (*currentToken == '(') {
+
+			}
+			else if (*currentToken = '"') {
+
+			}
+			else {
+
+			}
+		}
+
+		// The argv array for the child.
+		// Terminated by a null pointer.
+		char* args[] = {cmd, "one", 0};
+
+		printf("== executed program's output: ==\n");
+
+		execvp(cmd, args);
+		printf("Can't get here, exec only returns on error.");
+	}
 }
 
-int
-main(int argc, char* argv[])
-{
-    char cmd[256];
+// Main execution loop yee haw
+int main(int argc, char* argv[]) {
+	char cmd[bufferSize];
 
-    if (argc == 1) {
-        printf("nush$ ");
-        fflush(stdout);
-        fgets(cmd, 256, stdin);
-    }
-    else {
-        memcpy(cmd, "echo", 5);
-    }
+	while (1) {
+		// Ensures that the input command is valid
+		if (argc == 1) {
+			printf("nush$ ");
+			fflush(stdout);
+			fgets(cmd, bufferSize, stdin);
 
-    execute(cmd);
+		}
+		// Execute... virtually nothing
+		else {
+			memcpy(cmd, "echo", 5);
+		}
+		
+		// Keeps growing that command if goes to next line
+		if (cmd[strlen(cmd) - 1] == '\\') {
+			continue;
+		}
 
-    return 0;
+		// TODO: Take care of \ here and append that to the command otherwise?
+		fflush(stdout);
+		execute(cmd);
+		cmd[0] = '\0';
+	}
+
+	// I guess this is technically unreachable
+	return 0;
 }
