@@ -1,6 +1,18 @@
 // Relevant imports
-#include "ast.h"
 #include <assert.h>
+#include <stdlib.h>
+#include <string.h>
+#include "ast.h"
+
+// Makes an ast node
+AstNode* make_ast_node() {
+	AstNode* node = malloc(sizeof(AstNode));
+	node->tok = '\0';
+	node->isData = 0;
+	node->left = NULL;
+	node->right = NULL;
+	return node;
+}
 
 // Adds a node to the AST
 void add_node(AstNode* root, AstNode* l, AstNode* r) {
@@ -45,9 +57,9 @@ void free_ast(AstNode* node) {
 		node->tok = NULL;
 
 		// Frees nodes recursively
-		free_ast(AstNode->left);
-		free_ast(AstNode->right);
-		AstNode->left = NULL;
-		AstNode->right = NULL;
+		free_ast(node->left);
+		free_ast(node->right);
+		node->left = NULL;
+		node->right = NULL;
 	}
 }

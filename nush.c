@@ -12,12 +12,13 @@
 
 #include "tokens.h"
 #include "svec.h"
+#include "ast.h"
 
 // User variables stored here
 // TODO: Update my hashmap implementation so that it uses arbitrary length string keys so that
 // I no longer have to use nasty linear time association vectors just to store variables.
-svec* variableNames = make_svec();
-svec* variableValues = make_svec();
+svec* variableNames;
+svec* variableValues;
 
 // Executest the received command gamer style
 void execute(char* cmd) {
@@ -41,7 +42,7 @@ void execute(char* cmd) {
 			printf("child exited with exit code (or main returned) %d\n", WEXITSTATUS(status));
 		}
 	}
-	// Child process
+	// TODO: Child process
 	else {
 		// child process
 		// printf("Child pid: %d\n", getpid());
@@ -49,7 +50,7 @@ void execute(char* cmd) {
 
 		// Executes the individual tokens
 		for (int ii = 0; ii < tokens->size; ii++) {
-			char* currentToken = tokens->data;
+			char* currentToken = tokens->data[ii];
 			
 			// Exit command
 			if (!strcmp(currentToken, "exit")) {
@@ -101,6 +102,8 @@ void execute(char* cmd) {
 // Main execution loop yee haw
 int main(int argc, char* argv[]) {
 	char cmd[bufferSize];
+	variableNames = make_svec();
+	variableValues = make_svec();
 
 	while (1) {
 		// Ensures that the input command is valid
