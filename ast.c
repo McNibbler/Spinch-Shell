@@ -3,6 +3,35 @@
 #include <stdlib.h>
 #include <string.h>
 #include "ast.h"
+#include "tokens.h"
+
+// Makes an AST given a svec of tokens
+AstNode* token_list_to_ast(svec* tokens) {
+	AstNode* running = make_ast_node();
+	for (int ii = 0; ii < tokens->size - 1; ii++) {
+		char* runningToken = svec_get(tokens, ii);
+		
+		// Handles the asString inputs in quotes
+		if (*runningToken == '"') {
+
+		}
+
+		// Recursively parses parenthetes
+		else if (*runningToken == '(') {
+			if (strlen(runningToken) >= 2) {
+				runningToken[strlen(runningToken) - 1] = '\0';
+				runningToken++;
+				svec* parenTokenized = tokenize(runningToken);
+				AstNode* parenAst = token_list_to_ast(parenTokenized);
+			}
+		}
+
+
+		
+	}
+
+	return running;
+}
 
 // Makes an ast node
 AstNode* make_ast_node() {

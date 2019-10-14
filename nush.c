@@ -20,6 +20,7 @@
 svec* variableNames;
 svec* variableValues;
 
+
 // Executest the received command gamer style
 void execute(char* cmd) {
 
