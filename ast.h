@@ -11,8 +11,9 @@ typedef struct AstNode {
 	struct AstNode* right;
 } AstNode;
 
-AstNode* token_list_to_ast(svec* tokens);
-AstNode* make_ast_node();
+AstNode* parse_tokens(svec* tokens);
+AstNode* make_blank_ast_node();
+AstNode* make_ast_node(char* tok);
 void add_node(AstNode* root, AstNode* l, AstNode* r);
 void set_token(AstNode* node, char* tok);
 void free_ast(AstNode* node);

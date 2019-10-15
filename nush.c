@@ -1,8 +1,13 @@
-// Nush Shell (To be rebranded soon)
-// An ultra-lightweight POSIX-style shell
-// Thomas Kaunzinger - Fall 2019
+//////////////////////////////////////////////
+// Nush Shell (To be rebranded soon)		//
+// An ultra-lightweight POSIX-style shell	//
+// Thomas Kaunzinger - Fall 2019			//
+//////////////////////////////////////////////
 
-// Relevant library imports
+//////////////////////////////
+// Relevant library imports //
+//////////////////////////////
+
 #include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
@@ -14,14 +19,62 @@
 #include "svec.h"
 #include "ast.h"
 
+//////////////////////
+// Global variables //
+//////////////////////
+
 // User variables stored here
 // TODO: Update my hashmap implementation so that it uses arbitrary length string keys so that
 // I no longer have to use nasty linear time association vectors just to store variables.
 svec* variableNames;
 svec* variableValues;
 
+int exitCode = -1;	// I think this is right but I have to check
 
-// Executest the received command gamer style
+///////////////////////////
+// Function Declarations //
+///////////////////////////
+
+// Interprets and executes the parsed AST
+int execute_ast(AstNode* ast);
+
+// Parses and executes the command string
+void execute(char* cmd);
+
+/////////////////////////////
+// Function Implementation //
+/////////////////////////////
+
+// Interprets and executes the parsed AST
+int execute_ast(AstNode* ast) {
+	// TODO
+}
+
+// Parses and executes the command string
+void execute(char* cmd) {
+	// Manual exit, just so the user can quit this program if they desire 
+	if (!strcmp(cmd, "exit\0")) {
+		exit(0);
+	}
+	printf("command: %s\n", cmd);
+
+	// Runs the parsers to turn the command into a list of tokens and then an
+	// Arbitrary Syntax Tree (AST) to execute
+	svec* tokens = tokenize(cmd);
+	AstNode* commandTree = parse_tokens(tokens);
+	free_svec(tokens);
+	int status = execute_ast(commandTree);
+	free_ast(commandTree);
+	
+	if (status == exitCode) {
+		// exits successfully
+		exit(0);
+	}
+
+}
+
+// Executes the received command gamer style
+/*
 void execute(char* cmd) {
 
 	svec* tokens = tokenize(cmd);
@@ -99,6 +152,11 @@ void execute(char* cmd) {
 		printf("Can't get here, exec only returns on error.");
 	}
 }
+*/
+
+///////////////////
+// Main function //
+///////////////////
 
 // Main execution loop yee haw
 int main(int argc, char* argv[]) {

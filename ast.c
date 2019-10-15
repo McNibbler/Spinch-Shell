@@ -1,45 +1,74 @@
-// Relevant imports
+// Relevant import
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>
 #include "ast.h"
 #include "tokens.h"
 
+
 // Makes an AST given a svec of tokens
-AstNode* token_list_to_ast(svec* tokens) {
-	AstNode* running = make_ast_node();
-	for (int ii = 0; ii < tokens->size - 1; ii++) {
-		char* runningToken = svec_get(tokens, ii);
-		
-		// Handles the asString inputs in quotes
-		if (*runningToken == '"') {
+AstNode* parse_tokens(svec* tokens) {
+	assert(tokens != NULL && !tokens->size);
 
+
+	// Operations
+	char* ops[] = {"\"", "(", "=", "$", ";", "\\", "&", "|", "<", ">", "&&", "||"};
+	int opsSize = 12;
+
+	// Cycles through the operations and parses based on that
+	for (int ii = 0; ii < opsSize; ii++) {
+		int findIndex = svec_find(tokens, ops[ii]);
+		if (findIndex >= -1) {
+			svec* left = svec_slice(tokens, 0, findIndex);
+			svec* right = svec_slice(tokens, findIndex + 1, tokens->size);
+			AstNode* result = make_ast_node(ops[ii]);
+			add_node(result, parse_tokens(left), parse_tokens(right));
 		}
-
-		// Recursively parses parenthetes
-		else if (*runningToken == '(') {
-			if (strlen(runningToken) >= 2) {
-				runningToken[strlen(runningToken) - 1] = '\0';
-				runningToken++;
-				svec* parenTokenized = tokenize(runningToken);
-				AstNode* parenAst = token_list_to_ast(parenTokenized);
-			}
-		}
-
-
-		
 	}
 
-	return running;
+	// Return a single node
+	if (tokens->size == 1) {
+		return make_ast_node(svec_get(tokens, 0));
+	}
+
+	// AstNode* running = make_ast_node();
+	// for (int ii = 0;  ii < tokens->size - 1; ii++) {
+	// 	char* runningToken = svec_get(tokens, ii);
+		
+	//	// Recursively parses parenthetes
+	//	else if (*runningToken == '(') {
+	//		if (strlen(runningToken) >= 2) {
+	//			runningToken[strlen(runningToken) - 1] = '\0';
+	//			runningToken++;
+	//			svec* parenTokenized = tokenize(runningToken);
+	//			AstNode* parenAst = parse_tokens(parenTokenized);
+	//			return parenAst;
+	//		}
+	//	}
+	
+	//	// 
+	//	//else if
+		
+	//	}
+
+	// Return an empty boi (I dont think this even happens)
+	return make_blank_ast_node();
 }
 
 // Makes an ast node
-AstNode* make_ast_node() {
+AstNode* make_blank_ast_node() {
 	AstNode* node = malloc(sizeof(AstNode));
 	node->tok = '\0';
 	node->isData = 0;
 	node->left = NULL;
 	node->right = NULL;
+	return node;
+}
+
+// Makes an ast node with a specified token
+AstNode* make_ast_node(char* tok) {
+	AstNode* node = make_blank_ast_node();
+   	set_token(node, tok);
 	return node;
 }
 
