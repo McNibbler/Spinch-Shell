@@ -26,17 +26,13 @@ AstNode* parse_tokens(svec* tokens) {
 			svec* right = svec_slice(tokens, findIndex + 1, tokens->size);
 			AstNode* result = make_operation_ast_node(ops[ii]);
 			add_top_node(result, parse_tokens(left), parse_tokens(right));
-			hasOper = 1;
+			return result;
 		}
 	}
 
 	// Returns an ast with no children and just raw instructions if there is no operations
-	if (!hasOper) {
-		return make_instruction_ast_node(tokens);
-	}
+	return make_instruction_ast_node(tokens);
 	
-	// Return an empty boi (I dont think this even happens)
-	return make_blank_ast_node();
 
 	// A relic of shell past... hope i dont need this
 	

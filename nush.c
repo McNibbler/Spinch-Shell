@@ -30,11 +30,15 @@
 svec* variableNames;
 svec* variableValues;
 
-int exitCode = -1;	// I think this is right but I have to check
+// This is the exit code expected from the syscalls
+int exitCode = -1;
 
 ///////////////////////////
 // Function Declarations //
 ///////////////////////////
+
+// Handles the special operations of the AST
+int execute_operations(AstNode* ast); 
 
 // Interprets and executes the parsed AST
 int execute_ast(AstNode* ast);
@@ -42,9 +46,147 @@ int execute_ast(AstNode* ast);
 // Parses and executes the command string
 void execute(char* cmd);
 
+////////// OPERATOR HANDLING //////////
+int execute_assignment(AstNode* astL, AstNode* astR);		// =
+int execute_var_call(AstNode* astL, AstNode* astR);			// $
+int execute_semicolon(AstNode* astL, AstNode* astR);		// ;
+int execute_forward_slash(AstNode* astL, AstNode* astR);	// \     //
+int execute_background(AstNode* astL, AstNode* astR);		// &
+int execute_pipe(AstNode* astL, AstNode* astR);				// |
+int execute_left_arrow(AstNode* astL, AstNode* astR);		// <
+int execute_right_arrow(AstNode* astL, AstNode* astR);		// >
+int execute_and(AstNode* astL, AstNode* astR);				// &&
+int execute_or(AstNode* astL, AstNode* astR);				// ||
+int execute_quote(AstNode* astL, AstNode* astR);			// "
+
 /////////////////////////////
 // Function Implementation //
 /////////////////////////////
+
+//////////////////// POSIX SPECIAL OPERATOR HANDLING ////////////////////
+
+// Evaluates the semicolon operator
+int execute_semicolon(AstNode* astL, AstNode* astR){
+	int cpid;
+	// Parent process
+	if ((cpid = fork())) {
+		int status;
+		waitpid(cpid, &status, 0);
+		// If signal caught to exit
+		if (WEXITSTATUS(status) == 0xFF) {
+			return -1;
+		}
+		return execute_ast(astR);
+	}
+	// Child process
+	else {
+		// I was a silly man and tried returning this instead of exiting for
+		// far too long
+		exit(execute_ast(astL));
+	}
+}
+
+// TODO: thjis one seems important later
+int execute_forward_slash(AstNode* astL, AstNode* astR) {
+	return -1;
+}
+
+// Backgrounds a process
+int execute_background(AstNode* astL, AstNode* astR) {
+	// Basically just semicolon without the waiting lol	
+	int cpid;
+	// Parent process
+	if ((cpid = fork())) {
+		return execute_ast(astR);
+	}
+	// Child process
+	else {
+		exit(execute_ast(astL));
+	}
+}
+
+// TODO: I'll do this in a bit it looks kinda long
+int execute_pipe(AstNode* astL, AstNode* astR) {
+	return -1;
+}
+
+// Executes left redirection operations 
+int execute_left_arrow(AstNode* astL, AstNode* astR) {
+	return -1;
+}
+
+// Executes right redirection operations
+int execute_right_arrow(AstNode* astL, AstNode* astR) {
+	return -1;
+}
+
+// Handles conditional operation AND
+int execute_and(AstNode* astL, AstNode* astR) {
+	return -1;
+}
+
+// Handles conditional operation OR
+int execute_or(AstNode* astL, AstNode* astR) {
+	return -1;
+}
+
+// Handles the special operations of the AST
+int execute_operations(AstNode* ast) {
+	// General error if empty AST
+	if (!ast) {
+		return 1;
+	}
+	// This uhh shouldn't happen but I'm paranoid
+	if (!ast->operationToken || *ast->operationToken == '\0') {
+		return 1;
+	}
+
+	char* op = strdup(ast->operationToken);
+
+	if (!strcmp(op, "=")) {
+		// return execute_assignment(ast->left, ast->right);
+	}
+	else if (!strcmp(op, "$")) {
+		// return execute_var_call(ast->left, ast->right);
+	}
+	else if (!strcmp(op, ";")) {
+		return execute_semicolon(ast->left, ast->right);
+	}
+	else if (!strcmp(op, "\\")) {
+		return execute_forward_slash(ast->left, ast->right);
+	}
+	else if (!strcmp(op, "&")) {
+		return execute_background(ast->left, ast->right);
+	}
+	else if (!strcmp(op, "|")) {
+		return execute_pipe(ast->left, ast->right);
+	}
+	else if (!strcmp(op, "<")) {
+		return execute_left_arrow(ast->left, ast->right);
+	}
+	else if (!strcmp(op, ">")) {
+		return execute_right_arrow(ast->left, ast->right);
+	}
+	else if (!strcmp(op, "&&")) {
+		return execute_and(ast->left, ast->right);
+	}
+	else if (!strcmp(op, "||")) {
+		return execute_or(ast->left, ast->right);
+	}
+	else if (*op = '"') {
+		// return execute_quote(ast->left, ast->right);
+	}
+	else if (*op == '(') {
+		// TODO: I think you can do this by taking the token itself and remove the first and
+		// last chars and re-parsing it and re-executing that new ast. I will take care of
+		// that if I have time 
+	}
+
+	printf("Error: Invalid operator\n");
+	return 1;
+}
+
+//////////////////// GENERAL EXECUTION HANDLING ////////////////////
 
 // Interprets and executes the parsed AST
 int execute_ast(AstNode* ast) {
@@ -102,9 +244,7 @@ int execute_ast(AstNode* ast) {
 			// Taken from fork sample
 			int status;
 			waitpid(cpid, &status, 0);
-			if (WIFEXITED(status)) {
-				return WEXITSTATUS(status);
-			}
+			return WEXITSTATUS(status);
 		}
 		// Child process
 		else{ 
@@ -131,18 +271,12 @@ int execute_ast(AstNode* ast) {
 	
 	//////////////////// SPECIAL OPERATION EXECUTION ////////////////////
 
-	
+	return execute_operations(ast);	
 
-
-	return 1;
 }
 
 // Parses and executes the command string
 void execute(char* cmd) {
-	// if (!strcmp(cmd, "exit\n")) {
-	// 	exit(0);
-	// }
-	// printf("command: %s\n", cmd);
 
 	// Runs the parsers to turn the command into a list of tokens and then an
 	// Arbitrary Syntax Tree (AST) to execute
@@ -158,87 +292,6 @@ void execute(char* cmd) {
 	}
 
 }
-
-// Executes the received command gamer style
-/*
-void execute(char* cmd) {
-
-	svec* tokens = tokenize(cmd);
-
-	int cpid;
-	int exitCode = 0;
-
-	// Parent process
-	if ((cpid = fork())) {
-		// parent process
-		// printf("Parent pid: %d\n", getpid());
-		// printf("Parent knows child pid: %d\n", cpid);
-
-		// Waits for the child process to terminate
-		int status;
-		waitpid(cpid, &status, 0);
-
-		if (WIFEXITED(status)) {
-			printf("child exited with exit code (or main returned) %d\n", WEXITSTATUS(status));
-		}
-	}
-	// TODO: Child process
-	else {
-		// child process
-		// printf("Child pid: %d\n", getpid());
-		// printf("Child knows parent pid: %d\n", getppid());
-
-		// Executes the individual tokens
-		for (int ii = 0; ii < tokens->size; ii++) {
-			char* currentToken = tokens->data[ii];
-			
-			// Exit command
-			if (!strcmp(currentToken, "exit")) {
-				exit(0);
-			}
-			else if (!strcmp(currentToken, ";")) {
-
-			}
-			else if (!strcmp(currentToken, "<")) {
-
-			}
-			else if (!strcmp(currentToken, ">")) {
-
-			}
-			else if (!strcmp(currentToken, "|")) {
-
-			}
-			else if (!strcmp(currentToken, "&")) {
-
-			}
-			else if (!strcmp(currentToken, "||")) {
-
-			}
-			else if (!strcmp(currentToken, "&&")) {
-
-			}
-			else if (*currentToken == '(') {
-
-			}
-			else if (*currentToken = '"') {
-
-			}
-			else {
-
-			}
-		}
-
-		// The argv array for the child.
-		// Terminated by a null pointer.
-		char* args[] = {cmd, "one", 0};
-
-		printf("== executed program's output: ==\n");
-
-		execvp(cmd, args);
-		printf("Can't get here, exec only returns on error.");
-	}
-}
-*/
 
 ///////////////////
 // Main function //
