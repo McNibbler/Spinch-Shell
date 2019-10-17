@@ -53,6 +53,8 @@ int execute_ast(AstNode* ast) {
 		return 1;
 	}
 
+	//////////////////// BASE INSTRUCTION EXECUTION ////////////////////
+
 	// If no unix operations, execute this instruction
 	if (!ast->operationToken || *ast->operationToken == '\0') {
 		// Sometimes you'll just get to a case where you don't have to execute anything
@@ -75,9 +77,21 @@ int execute_ast(AstNode* ast) {
 			}
 		}
 
-
-
-
+		// Looks like I need to take care of CD as well
+		if (!strcmp(svec_get(ast->instructionTokens, 0), "cd")) {
+			if (ast->instructionTokens->size == 2) {
+				if (!chdir(svec_get(ast->instructionTokens, 1))) {
+					return 0;
+				}
+				perror("cd: ");
+			}
+			// TODO: consider adding support for cd to move to ~ with no args
+			// -- also there's a 3 arg version of cd apparently?
+			else {
+				perror("cd: ");
+			}
+			return 1;
+		}
 
 		////////// GENERAL PROGRAM INSTRUCTIONS //////////
 		
@@ -113,10 +127,13 @@ int execute_ast(AstNode* ast) {
 			printf("error[%d] - %s: %s\n", errno, argv[0], strerror(errno));
 			exit(1);
 		}
-		
-		
-		return 0;
 	}
+	
+	//////////////////// SPECIAL OPERATION EXECUTION ////////////////////
+
+	
+
+
 	return 1;
 }
 
