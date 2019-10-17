@@ -87,7 +87,7 @@ int execute_semicolon(AstNode* astL, AstNode* astR){
 	}
 }
 
-// TODO: thjis one seems important later
+// TODO: this one seems important later
 int execute_forward_slash(AstNode* astL, AstNode* astR) {
 	return exitCode;
 }
@@ -106,9 +106,39 @@ int execute_background(AstNode* astL, AstNode* astR) {
 	}
 }
 
-// TODO: I'll do this in a bit it looks kinda long
+// TODO: FINISH THIS SHIT DAWWWWWGGG IT'S 7:30AM AND I NEED TO SLEEEEEEEEEEEEEEEEEEEEP
 int execute_pipe(AstNode* astL, AstNode* astR) {
+
 	return exitCode;
+
+	// Generates the pipe file descriptors
+	int pipeFds[2];
+	int rv = pipe(pipeFds);
+	if (rv != 0) {
+		perror("error");
+		return exitCode;
+	}
+
+	int cpid;
+	// Parent process
+	if ((cpid = fork())) {
+		int status;
+		waitpid(cpid, &status, 0);
+		return WEXITSTATUS(status);
+	}
+	// Child process
+	else {
+		if (!astR->instructionTokens || !astR->instructionTokens->size
+				|| !astL->instructionTokens || !astL->instructionTokens->size) {
+			printf("error: missing pipe arguments\n");
+			exit(1);
+		}
+
+		// replaces stdin with the file 
+		// dup2(fd, 0);
+		// close(fd);
+		exit(execute_ast(astL));
+	}
 }
 
 // Executes left redirection operations 
@@ -154,7 +184,7 @@ int execute_right_arrow(AstNode* astL, AstNode* astR) {
 	// Child process
 	else {
 		if (!astR->instructionTokens || !astR->instructionTokens->size) {
-			printf("error: no file to redirect left\n");
+			printf("error: no file to redirect right\n");
 			exit(1);
 		}
 
