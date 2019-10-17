@@ -14,6 +14,7 @@
 #include <stdio.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <fcntl.h>
 #include <errno.h>
 
 #include "tokens.h"
@@ -74,7 +75,7 @@ int execute_semicolon(AstNode* astL, AstNode* astR){
 		waitpid(cpid, &status, 0);
 		// If signal caught to exit
 		if (WEXITSTATUS(status) == 0xFF) {
-			return -1;
+			return exitCode;
 		}
 		return execute_ast(astR);
 	}
@@ -88,7 +89,7 @@ int execute_semicolon(AstNode* astL, AstNode* astR){
 
 // TODO: thjis one seems important later
 int execute_forward_slash(AstNode* astL, AstNode* astR) {
-	return -1;
+	return exitCode;
 }
 
 // Backgrounds a process
@@ -107,17 +108,68 @@ int execute_background(AstNode* astL, AstNode* astR) {
 
 // TODO: I'll do this in a bit it looks kinda long
 int execute_pipe(AstNode* astL, AstNode* astR) {
-	return -1;
+	return exitCode;
 }
 
 // Executes left redirection operations 
 int execute_left_arrow(AstNode* astL, AstNode* astR) {
-	return -1;
+	int cpid;
+	// Parent process
+	if ((cpid = fork())) {
+		int status;
+		waitpid(cpid, &status, 0);
+		return WEXITSTATUS(status);
+	}
+	// Child process
+	else {
+		if (!astR->instructionTokens || !astR->instructionTokens->size) {
+			printf("error: no file to redirect left\n");
+			exit(1);
+		}
+
+		// Opens the file as readonly
+		int fd = open(svec_get(astR->instructionTokens, 0), O_RDONLY, 0444);
+		if (fd == -1) {
+			perror(svec_get(astR->instructionTokens, 0));
+			exit(1);
+		}
+
+		// replaces stdin with the file 
+		dup2(fd, 0);
+		close(fd);
+		exit(execute_ast(astL));
+	}
 }
 
 // Executes right redirection operations
+// (Virtually identical to left redirection)
 int execute_right_arrow(AstNode* astL, AstNode* astR) {
-	return -1;
+	int cpid;
+	// Parent process
+	if ((cpid = fork())) {
+		int status;
+		waitpid(cpid, &status, 0);
+		return WEXITSTATUS(status);
+	}
+	// Child process
+	else {
+		if (!astR->instructionTokens || !astR->instructionTokens->size) {
+			printf("error: no file to redirect left\n");
+			exit(1);
+		}
+
+		// Opens the file as writeonly, but will create if needed
+		int fd = open(svec_get(astR->instructionTokens, 0), O_CREAT | O_WRONLY, 0644);
+		if (fd == -1) {
+			perror(svec_get(astR->instructionTokens, 0));
+			exit(1);
+		}
+
+		// replaces stdout with the file 
+		dup2(fd, 1);
+		close(fd);
+		exit(execute_ast(astL));
+	}
 }
 
 // Handles conditional operation AND
@@ -247,7 +299,7 @@ int execute_ast(AstNode* ast) {
 				return 1;
 			}
 			else {
-				return -1;
+				return exitCode;
 			}
 		}
 
