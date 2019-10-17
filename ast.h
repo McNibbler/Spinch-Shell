@@ -5,17 +5,22 @@
 
 // Arbitrary Syntax Tree data structure
 typedef struct AstNode {
-	char* tok;			// Instruction/data token
-	int isData;			// Boolean if the token is data or a special token
+	// char* tok;			// Instruction/data token
+	// int isData;			// Boolean if the token is data or a special token
+	char* operationToken;			// Unix operation token (e.g. < > ; & )
+	svec* instructionTokens;		// Argument/Instruction tokens (anything else)
 	struct AstNode* left;
 	struct AstNode* right;
 } AstNode;
 
-AstNode* parse_tokens(svec* tokens);
 AstNode* make_blank_ast_node();
-AstNode* make_ast_node(char* tok);
-void add_node(AstNode* root, AstNode* l, AstNode* r);
-void set_token(AstNode* node, char* tok);
+AstNode* make_full_ast_node(char* operationToken, svec* instructionTokens);
+AstNode* make_operation_ast_node(char* operationToken);
+AstNode* make_instruction_ast_node(svec* instructionTokens);
+void add_top_node(AstNode* root, AstNode* l, AstNode* r);
+// void set_operation_token(AstNode* node, char* operationToken);
+// void set_instruction_tokens(AstNode* node, svec* instructionTokens);
 void free_ast(AstNode* node);
+AstNode* parse_tokens(svec* tokens);
 
 #endif

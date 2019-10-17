@@ -26,6 +26,8 @@ void svec_swap(svec* sv, int ii, int jj);
 void svec_print(svec* sv);
 void svec_reverse(svec* sv);
 
+// char** svec_as_array(svec* sv);
+
 // Added a helper function for helping grow when needed
 void svec_grow(svec* sv);
 
