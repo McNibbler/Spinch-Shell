@@ -122,12 +122,44 @@ int execute_right_arrow(AstNode* astL, AstNode* astR) {
 
 // Handles conditional operation AND
 int execute_and(AstNode* astL, AstNode* astR) {
-	return -1;
+	int cpid;
+	// Parent process
+	if ((cpid = fork())) {
+		int status;
+		waitpid(cpid, &status, 0);
+		// For some godforsaken reason, true is 0 and false is 1 for this syscall
+		// I mean I get it makes sense because of the exit codes but this was annoying 
+		if (!WEXITSTATUS(status)) {
+			return execute_ast(astR);
+		}
+		return status;
+	}
+	// Child process
+	else {
+		exit(execute_ast(astL));
+	}
 }
 
 // Handles conditional operation OR
+// (I definitely copied and pasted AND for this lmao)
 int execute_or(AstNode* astL, AstNode* astR) {
-	return -1;
+	int cpid;
+	// Parent process
+	if ((cpid = fork())) {
+		int status;
+		waitpid(cpid, &status, 0);
+		// For some godforsaken reason, true is 0 and false is 1 for this syscall
+		// I mean I get it makes sense because of the exit codes but this was annoying 
+		if (!WEXITSTATUS(status)) {
+			// Short circuits because it's already true so this next operation is irrelevant
+			return 0;
+		}
+		return execute_ast(astR);
+	}
+	// Child process
+	else {
+		exit(execute_ast(astL));
+	}
 }
 
 // Handles the special operations of the AST
