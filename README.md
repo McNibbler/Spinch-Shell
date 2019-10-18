@@ -1,8 +1,6 @@
 # Spinch-Shell
-
-##Ultra lightweight POSIX-style shell for Linux written in C
-
-###Thomas Kaunzinger - Fall 2019
+Ultra lightweight POSIX-style shell for Linux written in C
+Thomas Kaunzinger - Fall 2019
 
 This shell implements most of the basic POSIX-style commands
 and operations, including piping, file redirection, variable
