@@ -39,7 +39,7 @@ svec* tokenize(char* command) {
 			case '>' :	// -- follows the design pattern for multiple cases in a switch
 			case ';' :	// -- with the same behavior.
 			case '=' :
-			case '$' :
+			// case '$' :
 			case '\\' :
 				// Null-terminates the running command buffer
 				commandBuffer[runningTokenSize] = '\0';

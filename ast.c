@@ -14,8 +14,8 @@ AstNode* parse_tokens(svec* tokens) {
 	}
 
 	// Operations
-	char* ops[] = {"\"", "(", "=", "$", ";", "\\", "&", "|", "<", ">", "&&", "||"};
-	int opsSize = 12;
+	char* ops[] = {"\"", "(", "=", ";", "\\", "&", "|", "<", ">", "&&", "||"}; //, "$"};
+	int opsSize = 11;
 
 	// Cycles through the operations and parses based on that
 	int hasOper = 0;
@@ -110,6 +110,7 @@ AstNode* make_operation_ast_node(char* operationToken) {
 		case '>' :
 		case ';' :
 		case '=' :
+		case '$' :
 		case '\\' :
 		case '&' :
 		case '|' :

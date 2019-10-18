@@ -49,7 +49,6 @@ void execute(char* cmd);
 
 ////////// OPERATOR HANDLING //////////
 int execute_assignment(AstNode* astL, AstNode* astR);		// =
-int execute_var_call(AstNode* astL, AstNode* astR);			// $
 int execute_semicolon(AstNode* astL, AstNode* astR);		// ;
 int execute_forward_slash(AstNode* astL, AstNode* astR);	// \     //
 int execute_background(AstNode* astL, AstNode* astR);		// &
@@ -65,6 +64,29 @@ int execute_quote(AstNode* astL, AstNode* astR);			// "
 /////////////////////////////
 
 //////////////////// POSIX SPECIAL OPERATOR HANDLING ////////////////////
+
+// Assigns a variable
+int execute_assignment(AstNode* astL, AstNode* astR) {
+	if (!astL || !astR || !astL->instructionTokens || !astR->instructionTokens
+			|| astL->instructionTokens->size != 1 || astR->instructionTokens->size != 1) {
+		printf("Error in variable assignment\n");
+		return 1;
+	}
+
+	int index = svec_find(variableNames,
+			svec_get(astL->instructionTokens, astL->instructionTokens->size - 1));
+	
+	// Populates the association vectors
+	if (index == -1) {
+		svec_push_back(variableNames,
+				svec_get(astL->instructionTokens, astL->instructionTokens->size - 1));
+		svec_push_back(variableValues, svec_get(astR->instructionTokens, 0));
+	}
+	else {
+		svec_put(variableValues, index, svec_get(astR->instructionTokens, 0));
+	}	
+	return 0;	
+}
 
 // Evaluates the semicolon operator
 int execute_semicolon(AstNode* astL, AstNode* astR){
@@ -106,18 +128,44 @@ int execute_background(AstNode* astL, AstNode* astR) {
 	}
 }
 
-// TODO: FINISH THIS SHIT DAWWWWWGGG IT'S 7:30AM AND I NEED TO SLEEEEEEEEEEEEEEEEEEEEP
+// Executes piping outputs to inputs
 int execute_pipe(AstNode* astL, AstNode* astR) {
-
-	return exitCode;
 
 	// Generates the pipe file descriptors
 	int pipeFds[2];
 	int rv = pipe(pipeFds);
-	if (rv != 0) {
+	if (rv) {
 		perror("error");
 		return exitCode;
 	}
+
+	// Checks the input validity
+	if (!astR->instructionTokens || !astR->instructionTokens->size
+			|| !astL->instructionTokens || !astL->instructionTokens->size) {
+		printf("error: missing pipe arguments\n");
+		exit(1);
+	}
+
+	int cpid;
+	// parent
+	if ((cpid = fork())) {
+		int status;
+		close(pipeFds[1]);
+		// connects the ends of the pipe
+		dup2(pipeFds[0], 0);
+		waitpid(cpid, &status, 0);
+		execute_ast(astR);
+		return WEXITSTATUS(status);
+	}
+	// child
+	else {
+		close(pipeFds[0]);
+		// duplicates the write end of the pipe to stdout
+		dup2(pipeFds[1], 1);
+		exit(execute_ast(astL));
+	}
+
+/*
 
 	int cpid;
 	// Parent process
@@ -128,17 +176,33 @@ int execute_pipe(AstNode* astL, AstNode* astR) {
 	}
 	// Child process
 	else {
+		// Checks the input validity
 		if (!astR->instructionTokens || !astR->instructionTokens->size
 				|| !astL->instructionTokens || !astL->instructionTokens->size) {
 			printf("error: missing pipe arguments\n");
 			exit(1);
 		}
 
-		// replaces stdin with the file 
-		// dup2(fd, 0);
-		// close(fd);
-		exit(execute_ast(astL));
+		int cpid2;
+		// Sub-parent
+		if ((cpid2 = fork())) {
+			int status;
+			close(pipeFds[1]);
+			// connects the ends of the pipe
+			dup2(pipeFds[0], 0);
+			waitpid(cpid2, &status, 0);
+			int ret = execute_ast(astR);
+			return ret;
+		}
+		// Sub-child
+		else {
+			close(pipeFds[0]);
+			// duplicates the write end of the pipe to stdout
+			dup2(pipeFds[1], 1);
+			exit(execute_ast(astL));
+		}
 	}
+	*/
 }
 
 // Executes left redirection operations 
@@ -258,10 +322,7 @@ int execute_operations(AstNode* ast) {
 	char* op = strdup(ast->operationToken);
 
 	if (!strcmp(op, "=")) {
-		// return execute_assignment(ast->left, ast->right);
-	}
-	else if (!strcmp(op, "$")) {
-		// return execute_var_call(ast->left, ast->right);
+		return execute_assignment(ast->left, ast->right);
 	}
 	else if (!strcmp(op, ";")) {
 		return execute_semicolon(ast->left, ast->right);
@@ -349,8 +410,23 @@ int execute_ast(AstNode* ast) {
 			return 1;
 		}
 
-		////////// GENERAL PROGRAM INSTRUCTIONS //////////
+		// retreives variables 
+		for (int ii = 0; ii < ast->instructionTokens->size; ii++) {
+			if (*svec_get(ast->instructionTokens, ii) == '$') {
+				// Grabs the value from the association vector and swaps
+				char* varName = svec_get(ast->instructionTokens, ii) + 1;
+				int index = svec_find(variableNames, varName);
+				if (index == -1) {
+					svec_put(ast->instructionTokens, ii, " \0");
+				}
+				else {
+					svec_put(ast->instructionTokens, ii, svec_get(variableValues, index));
+				}
+			}
+		}
 		
+		////////// GENERAL PROGRAM INSTRUCTIONS //////////
+
 		// Forks the processes
 		int cpid;
 		// Parent Process
