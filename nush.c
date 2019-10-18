@@ -50,14 +50,14 @@ void execute(char* cmd);
 ////////// OPERATOR HANDLING //////////
 int execute_assignment(AstNode* astL, AstNode* astR);		// =
 int execute_semicolon(AstNode* astL, AstNode* astR);		// ;
-int execute_forward_slash(AstNode* astL, AstNode* astR);	// \     //
+int execute_forward_slash(AstNode* astL, AstNode* astR);	// \    // TODO
 int execute_background(AstNode* astL, AstNode* astR);		// &
-int execute_pipe(AstNode* astL, AstNode* astR);				// |
+int execute_pipe(AstNode* astL, AstNode* astR);				// |	// FIX
 int execute_left_arrow(AstNode* astL, AstNode* astR);		// <
 int execute_right_arrow(AstNode* astL, AstNode* astR);		// >
 int execute_and(AstNode* astL, AstNode* astR);				// &&
 int execute_or(AstNode* astL, AstNode* astR);				// ||
-int execute_quote(AstNode* astL, AstNode* astR);			// "
+int execute_quote(AstNode* astL, AstNode* astR);			// "	// TODO
 
 /////////////////////////////
 // Function Implementation //
@@ -489,34 +489,53 @@ void execute(char* cmd) {
 
 // Main execution loop yee haw
 int main(int argc, char* argv[]) {
-	char cmd[bufferSize];
+	char* cmd = malloc(bufferSize);
 	variableNames = make_svec();
 	variableValues = make_svec();
 
-	while (1) {
-		// Ensures that the input command is valid
-		if (argc == 1) {
+	// If launching the program standalone
+	if (argc == 1) {
+		while (1) {
+			// Ensures that the input command is valid
 			printf("nush$ ");
 			fflush(stdout);
 			fgets(cmd, bufferSize, stdin);
+			
+			// Detects EOF
+			if (feof(stdin)) {
+				exit(0);
+			}	
 
+			// TODO: Take care of \ here and append that to the command otherwise?
+			execute(cmd);
+			cmd[0] = '\0';
 		}
-		// Execute... virtually nothing
-		else {
-			memcpy(cmd, "echo", 5);
-		}
-		
-		// Keeps growing that command if goes to next line
-		// if (cmd[strlen(cmd) - 1] == '\\') {
-		// 	continue;
-		// }
-
-		// TODO: Take care of \ here and append that to the command otherwise?
-		fflush(stdout);
-		execute(cmd);
-		cmd[0] = '\0';
 	}
-
-	// I guess this is technically unreachable
+	// args input from command line
+	else {
+		// Opens the input file
+		svec* inputs = make_svec();
+		FILE* inputFile = fopen(argv[1], "r");
+		// Reads the lines of the input file
+		int size = 0;
+		int running = 1;
+		while (running) {
+			size = getline(&cmd, (size_t*)&bufferSize, inputFile);
+			if (size != -1) {
+				cmd[size] = '\0';
+				svec_push_back(inputs, cmd);
+			}
+			else {
+				running = 0;
+			}
+		}
+		// Closes and executes the vector of commands
+		fclose(inputFile);	
+		for (int ii = 0; ii < inputs->size; ii++) {
+			execute(svec_get(inputs, ii));
+		}
+		free_svec(inputs);
+	}
+	// Exited successfully
 	return 0;
 }

@@ -1,0 +1,8 @@
+==10446== error calling PR_SET_PTRACER, vgdb might block
+==10446== 83 (32 direct, 51 indirect) bytes in 1 blocks are definitely lost in loss record 8 of 9
+==10446==    at 0x4C2FB0F: malloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==10446==    by 0x10A90D: make_instruction_ast_node (ast.c:136)
+==10446==    by 0x10A697: parse_tokens (ast.c:34)
+==10446==    by 0x109FBA: execute (nush.c:474)
+==10446==    by 0x10A0A3: main (nush.c:510)
+==10446== 
