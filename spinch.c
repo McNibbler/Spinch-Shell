@@ -1,8 +1,29 @@
-//////////////////////////////////////////////
-// Nush Shell (To be rebranded soon)		//
-// An ultra-lightweight POSIX-style shell	//
-// Thomas Kaunzinger - Fall 2019			//
-//////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////
+// Spinch Shell														//
+// An ultra-lightweight POSIX-style shell							//
+// Thomas Kaunzinger - Fall 2019									//
+// 																	//
+// This shell implements most of the basic POSIX-style commands		//
+// and operations, including piping, file redirection, variable		//
+// storing and recalling, backgrounding, logical operators, etc.	//
+//																	//
+// The program can be launched standalone interactively or can		//
+// input a .sh file for one-off script execution.					//
+//																	//
+// Some features are still TODO and I will eventually update		//
+// them at a later date so that I don't drive myself insane, but	//
+// likely not for a while due to my own personal time constraints.	//
+//																	//
+// These missing features include...								//
+// - Sub-command in parentheses support								//
+// - Commands with inputs in quotation marks						//
+// - Escape characters for newline ignoring							//
+// - Order of operations might not be 100% correct in parsing		//
+// - Might want to use a hashmap instead of vectors for variables	//
+// - Show working directory instead of just spinch$					//
+// - Improve cd for its different modes of operation				//
+// - Autocomplete and command history?								//
+//////////////////////////////////////////////////////////////////////
 
 //////////////////////////////
 // Relevant library imports //
@@ -27,7 +48,9 @@
 
 // User variables stored here
 // TODO: Update my hashmap implementation so that it uses arbitrary length string keys so that
-// I no longer have to use nasty linear time association vectors just to store variables.
+// -- I no longer have to use nasty linear time association vectors just to store variables.
+// EDIT: In retrospect, association vectors might be better for smaller sizes of data being stored
+// -- due to the considerably lower overhead, so they might actually be better for this application
 svec* variableNames;
 svec* variableValues;
 
@@ -52,7 +75,7 @@ int execute_assignment(AstNode* astL, AstNode* astR);		// =
 int execute_semicolon(AstNode* astL, AstNode* astR);		// ;
 int execute_back_slash(AstNode* astL, AstNode* astR);		// \    // TODO
 int execute_background(AstNode* astL, AstNode* astR);		// &
-int execute_pipe(AstNode* astL, AstNode* astR);				// |	// FIX
+int execute_pipe(AstNode* astL, AstNode* astR);				// |
 int execute_left_arrow(AstNode* astL, AstNode* astR);		// <
 int execute_right_arrow(AstNode* astL, AstNode* astR);		// >
 int execute_and(AstNode* astL, AstNode* astR);				// &&
@@ -73,6 +96,7 @@ int execute_assignment(AstNode* astL, AstNode* astR) {
 		return 1;
 	}
 
+	// Finds if the variable already exists or not and returns the index if it does
 	int index = svec_find(variableNames,
 			svec_get(astL->instructionTokens, astL->instructionTokens->size - 1));
 	
@@ -88,7 +112,7 @@ int execute_assignment(AstNode* astL, AstNode* astR) {
 	return 0;	
 }
 
-// Evaluates the semicolon operator
+// Evaluates the semicolon separation operator
 int execute_semicolon(AstNode* astL, AstNode* astR){
 	int cpid;
 	// Parent process
@@ -109,7 +133,7 @@ int execute_semicolon(AstNode* astL, AstNode* astR){
 	}
 }
 
-// TODO: this one seems important later
+// TODO: handle the newline breaks
 int execute_back_slash(AstNode* astL, AstNode* astR) {
 	return exitCode;
 }
@@ -138,26 +162,9 @@ int execute_pipe(AstNode* astL, AstNode* astR) {
 		exit(1);
 	}
 
-/*
-	int cpid;
-	// parent
-	if ((cpid = fork())) {
-		int status;
-		waitpid(cpid, &status, 0);
-		close(pipeFds[1]);
-		// connects the ends of the pipe
-		dup2(pipeFds[0], 0);
-		execute_ast(astR);
-		WEXITSTATUS(status);
-	}
-	// child
-	else {
-		close(pipeFds[0]);
-		// duplicates the write end of the pipe to stdout
-		dup2(pipeFds[1], 1);
-		exit(execute_ast(astL));
-	}
-*/
+	// This forking approach is kind of weird, but I found that I needed to do a fork to connect
+	// the out of one pipe to another, and then I needed another fork so that when that piped
+	// process ended, it didn't completely quit the program but rather just continue with it.
 
 	int cpid;
 	// Parent process
@@ -196,7 +203,28 @@ int execute_pipe(AstNode* astL, AstNode* astR) {
 			exit(execute_ast(astL));
 		}
 	}
-	
+
+	// OLD ATTEMPT WITHOUT DOUBLE FORK
+	/*
+	int cpid;
+	// parent
+	if ((cpid = fork())) {
+		int status;
+		waitpid(cpid, &status, 0);
+		close(pipeFds[1]);
+		// connects the ends of the pipe
+		dup2(pipeFds[0], 0);
+		execute_ast(astR);
+		WEXITSTATUS(status);
+	}
+	// child
+	else {
+		close(pipeFds[0]);
+		// duplicates the write end of the pipe to stdout
+		dup2(pipeFds[1], 1);
+		exit(execute_ast(astL));
+	}
+*/
 }
 
 // Executes left redirection operations 
@@ -308,64 +336,67 @@ int execute_operations(AstNode* ast) {
 	if (!ast) {
 		return 1;
 	}
+
 	// This uhh shouldn't happen but I'm paranoid
 	if (!ast->operationToken || *ast->operationToken == '\0') {
 		return 1;
 	}
 
+	// Operator to compare to
 	char* op = strdup(ast->operationToken);
 
-	if (!strcmp(op, "=")) {
+	// Now this is what I call a beautiful, clean finite state machine lmfao
+	if (!strcmp(op, "=")) {			// Variable assignment
 		free(op);
 		op = NULL;
 		return execute_assignment(ast->left, ast->right);
 	}
-	else if (!strcmp(op, ";")) {
+	else if (!strcmp(op, ";")) {	// Command separator
 		free(op);
 		op = NULL;
 		return execute_semicolon(ast->left, ast->right);
 	}
-	else if (!strcmp(op, "\\")) {
+	else if (!strcmp(op, "\\")) {	// Newline ignorer (TODO)
 		free(op);
 		op = NULL;
 		return execute_back_slash(ast->left, ast->right);
 	}
-	else if (!strcmp(op, "&")) {
+	else if (!strcmp(op, "&")) {	// Backgrounder
 		free(op);
 		op = NULL;
 		return execute_background(ast->left, ast->right);
 	}
-	else if (!strcmp(op, "|")) {
+	else if (!strcmp(op, "|")) {	// Pipe
 		free(op);
 		op = NULL;
 		return execute_pipe(ast->left, ast->right);
 	}
-	else if (!strcmp(op, "<")) {
+	else if (!strcmp(op, "<")) {	// Left redirect
 		free(op);
 		op = NULL;
 		return execute_left_arrow(ast->left, ast->right);
 	}
-	else if (!strcmp(op, ">")) {
+	else if (!strcmp(op, ">")) {	// Right redirect
 		free(op);
 		op = NULL;
 		return execute_right_arrow(ast->left, ast->right);
 	}
-	else if (!strcmp(op, "&&")) {
+	else if (!strcmp(op, "&&")) {	// AND operator
 		free(op);
 		op = NULL;
 		return execute_and(ast->left, ast->right);
 	}
-	else if (!strcmp(op, "||")) {
+	else if (!strcmp(op, "||")) {	// OR operator
 		free(op);
 		op = NULL;
 		return execute_or(ast->left, ast->right);
 	}
-	else if (*op = '"') {
+	else if (*op = '"') {			// Quote handler (TODO: probably not the right space for it)
 		free(op);
 		op = NULL;
 		// return execute_quote(ast->left, ast->right);
 	}
-	else if (*op == '(') {
+	else if (*op == '(') {			// Parentheses handler (TODO: also probably not the right spot)
 		free(op);
 		op = NULL;
 		// TODO: I think you can do this by taking the token itself and remove the first and
@@ -373,6 +404,7 @@ int execute_operations(AstNode* ast) {
 		// that if I have time 
 	}
 
+	// If you use an incorrect operator somehow
 	printf("Error: Invalid operator\n");
 	free(op);
 	op = NULL;
@@ -383,6 +415,7 @@ int execute_operations(AstNode* ast) {
 
 // Interprets and executes the parsed AST
 int execute_ast(AstNode* ast) {
+	
 	// General error if empty AST
 	if (!ast) {
 		return 1;
@@ -480,6 +513,7 @@ int execute_ast(AstNode* ast) {
 	
 	//////////////////// SPECIAL OPERATION EXECUTION ////////////////////
 
+	// Recurs down the AST if there are special operators
 	return execute_operations(ast);	
 
 }
@@ -491,11 +525,15 @@ void execute(char* cmd) {
 	// Arbitrary Syntax Tree (AST) to execute
 	svec* tokens = tokenize(cmd);
 	AstNode* commandTree = parse_tokens(tokens);
+
+	// The magic happens in here
 	int status = execute_ast(commandTree);
-	// free_svec(tokens);
+
+	// No leaks pls
 	free_ast(commandTree);
 	commandTree = NULL;
 	
+	// Exits when receives -1 signal
 	if (status == exitCode) {
 		// exits successfully
 		exit(0);
@@ -509,20 +547,27 @@ void execute(char* cmd) {
 
 // Main execution loop yee haw
 int main(int argc, char* argv[]) {
+	// Instantiates the command (buffer size is 0x1000, that's probably plenty)
 	char* cmd = malloc(bufferSize);
+
+	// Initializes the variable names and values association vectors
 	variableNames = make_svec();
 	variableValues = make_svec();
 
-	// If launching the program standalone
+	// If launching the program standalone (OR USING A REDIRECT OPERATOR)
 	if (argc == 1) {
 		while (1) {
 			// Ensures that the input command is valid
-			printf("nush$ ");
+			printf("spinch$ ");
 			fflush(stdout);
 			fgets(cmd, bufferSize, stdin);
 			
-			// Detects EOF
+			// Detects EOF and bails.
 			if (feof(stdin)) {
+				// I'm sure there isn't going to be a significant memory leak between EOF and
+				// exiting but I mean better to be consistent
+				free(cmd);
+				cmd = NULL;
 				exit(0);
 			}	
 
@@ -531,20 +576,23 @@ int main(int argc, char* argv[]) {
 			cmd[0] = '\0';
 		}
 	}
-	// args input from command line
+	// args input from command line from file (WITHOUT REDIRECT OPERATOR)
 	else {
 		// Opens the input file
 		svec* inputs = make_svec();
 		FILE* inputFile = fopen(argv[1], "r");
+
 		// Reads the lines of the input file
 		int size = 0;
 		int running = 1;
 		while (running) {
+			// Gets every line of the file and places them into the multi-inputs vector
 			size = getline(&cmd, (size_t*)&bufferSize, inputFile);
 			if (size != -1) {
 				cmd[size] = '\0';
 				svec_push_back(inputs, cmd);
 			}
+			// When EOF, exit
 			else {
 				running = 0;
 			}
@@ -554,6 +602,8 @@ int main(int argc, char* argv[]) {
 		for (int ii = 0; ii < inputs->size; ii++) {
 			execute(svec_get(inputs, ii));
 		}
+
+		// Miss me with that leaky memory
 		free_svec(inputs);
 		free(cmd);
 		cmd = NULL;

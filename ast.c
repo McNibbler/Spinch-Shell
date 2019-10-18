@@ -1,4 +1,4 @@
-// Relevant import
+// Relevant imports
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>
@@ -14,11 +14,12 @@ AstNode* parse_tokens(svec* tokens) {
 	}
 
 	// Operations
-	char* ops[] = {"\"", "(", "=", ";", "\\", "&", "|", "<", ">", "&&", "||"}; //, "$"};
+	char* ops[] = {"\"", "(", "=", "\\", ";", "&", "&&", "||", "|", "<", ">"}; //, "$"};
 	int opsSize = 11;
 
 	// Cycles through the operations and parses based on that
 	int hasOper = 0;
+	// Checks for operations in priority order
 	for (int ii = 0; ii < opsSize; ii++) {
 		int findIndex = svec_find(tokens, ops[ii]);
 		if (findIndex > -1) {
@@ -31,16 +32,14 @@ AstNode* parse_tokens(svec* tokens) {
 		}
 	}
 
-	// Returns an ast with no children and just raw instructions if there is no operations
+	// Returns an ast with no children and just raw instructions if there aren't special operations
 	return make_instruction_ast_node(tokens);
-	
 
 	// A relic of shell past... hope i dont need this
 	
 	// AstNode* running = make_ast_node();
 	// for (int ii = 0;  ii < tokens->size - 1; ii++) {
 	// 	char* runningToken = svec_get(tokens, ii);
-		
 	//	// Recursively parses parenthetes
 	//	else if (*runningToken == '(') {
 	//		if (strlen(runningToken) >= 2) {
@@ -51,17 +50,15 @@ AstNode* parse_tokens(svec* tokens) {
 	//			return parenAst;
 	//		}
 	//	}
-	
 	//	// 
 	//	//else if
-		
 	//	}
-
 }
 
-// Makes an ast node
+// Makes a blank ast node
 AstNode* make_blank_ast_node() {
 	AstNode* node = malloc(sizeof(AstNode));
+	// STRDUP IS VERY IMPORTANT
 	node->operationToken = strdup("\0");
 	node->instructionTokens = NULL;
 	node->left = NULL;
@@ -69,6 +66,7 @@ AstNode* make_blank_ast_node() {
 	return node;
 }
 
+// I DON'T THINK YOU'LL EVER NEED TO USE THIS!!
 // Makes an ast node with a specified operation token and instructions
 AstNode* make_full_ast_node(char* operationToken, svec* instructionTokens) {
 	assert(operationToken);
@@ -92,6 +90,7 @@ AstNode* make_full_ast_node(char* operationToken, svec* instructionTokens) {
 	}
 	assert(isOper);
 
+	// Actually assigns everything
 	AstNode* node = malloc(sizeof(AstNode));
 	node->operationToken = strdup(operationToken);
 	node->instructionTokens = instructionTokens;
@@ -124,6 +123,8 @@ AstNode* make_operation_ast_node(char* operationToken) {
 			break;	
 	}
 	assert(isOper);
+
+	// Actually assigns everything
 	AstNode* node = malloc(sizeof(AstNode));
 	node->operationToken = strdup(operationToken);
 	node->instructionTokens = make_svec();
@@ -135,6 +136,7 @@ AstNode* make_operation_ast_node(char* operationToken) {
 // Makes an ast node with specified instructions
 AstNode* make_instruction_ast_node(svec* instructionTokens) {
 	AstNode* node = malloc(sizeof(AstNode));
+	// STRDUP IS VERY IMPORTANT HERE LOL
 	node->operationToken = strdup("\0");
 	node->instructionTokens = instructionTokens;
 	node->left = NULL;

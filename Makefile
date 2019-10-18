@@ -1,5 +1,5 @@
 
-BIN  := nush
+BIN  := Spinch 
 SRCS := $(wildcard *.c)
 OBJS := $(SRCS:.c=.o)
 

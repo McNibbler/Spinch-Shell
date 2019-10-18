@@ -110,6 +110,7 @@ void svec_reverse(svec* sv) {
 	}
 }
 
+// I don't think this is needed anymore
 // Returns the svec as just an array... well actually a char**
 // char** svec_as_array(svec* sv) {
 // 	char* running[sv->size];
