@@ -20,10 +20,20 @@ svec* make_svec() {
 
 // Frees the memory of the svec
 void free_svec(svec* sv) {
-	free(sv->data);
-	sv->data = NULL;
-	free(sv);
-	sv = NULL;
+	if (sv->data) {
+		for (int ii = 0; ii < sv->size; ii++) {
+			if (sv->data[ii]) {
+				free(sv->data[ii]);
+				sv->data[ii] = NULL;
+			}
+		}
+		free(sv->data);
+		sv->data = NULL;
+	}
+	if (sv) {
+		free(sv);
+		sv = NULL;
+	}
 }
 
 // Returns the value at the desired svec index

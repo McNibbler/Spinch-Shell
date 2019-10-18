@@ -50,7 +50,7 @@ void execute(char* cmd);
 ////////// OPERATOR HANDLING //////////
 int execute_assignment(AstNode* astL, AstNode* astR);		// =
 int execute_semicolon(AstNode* astL, AstNode* astR);		// ;
-int execute_forward_slash(AstNode* astL, AstNode* astR);	// \    // TODO
+int execute_back_slash(AstNode* astL, AstNode* astR);		// \    // TODO
 int execute_background(AstNode* astL, AstNode* astR);		// &
 int execute_pipe(AstNode* astL, AstNode* astR);				// |	// FIX
 int execute_left_arrow(AstNode* astL, AstNode* astR);		// <
@@ -110,7 +110,7 @@ int execute_semicolon(AstNode* astL, AstNode* astR){
 }
 
 // TODO: this one seems important later
-int execute_forward_slash(AstNode* astL, AstNode* astR) {
+int execute_back_slash(AstNode* astL, AstNode* astR) {
 	return exitCode;
 }
 
@@ -131,31 +131,24 @@ int execute_background(AstNode* astL, AstNode* astR) {
 // Executes piping outputs to inputs
 int execute_pipe(AstNode* astL, AstNode* astR) {
 
-	// Generates the pipe file descriptors
-	int pipeFds[2];
-	int rv = pipe(pipeFds);
-	if (rv) {
-		perror("error");
-		return exitCode;
-	}
-
 	// Checks the input validity
-	if (!astR->instructionTokens || !astR->instructionTokens->size
-			|| !astL->instructionTokens || !astL->instructionTokens->size) {
+	if (!astR->instructionTokens // || !astR->instructionTokens->size
+			|| !astL->instructionTokens) { //|| !astL->instructionTokens->size) {
 		printf("error: missing pipe arguments\n");
 		exit(1);
 	}
 
+/*
 	int cpid;
 	// parent
 	if ((cpid = fork())) {
 		int status;
+		waitpid(cpid, &status, 0);
 		close(pipeFds[1]);
 		// connects the ends of the pipe
 		dup2(pipeFds[0], 0);
-		waitpid(cpid, &status, 0);
 		execute_ast(astR);
-		return WEXITSTATUS(status);
+		WEXITSTATUS(status);
 	}
 	// child
 	else {
@@ -164,8 +157,7 @@ int execute_pipe(AstNode* astL, AstNode* astR) {
 		dup2(pipeFds[1], 1);
 		exit(execute_ast(astL));
 	}
-
-/*
+*/
 
 	int cpid;
 	// Parent process
@@ -175,26 +167,28 @@ int execute_pipe(AstNode* astL, AstNode* astR) {
 		return WEXITSTATUS(status);
 	}
 	// Child process
+	// Decouples from the actual program to handle all the piping separate from the program
 	else {
-		// Checks the input validity
-		if (!astR->instructionTokens || !astR->instructionTokens->size
-				|| !astL->instructionTokens || !astL->instructionTokens->size) {
-			printf("error: missing pipe arguments\n");
-			exit(1);
+		// Generates the pipe file descriptors
+		// -- This needs to be in the child process to decouple and return correctly
+		int pipeFds[2];
+		int rv = pipe(pipeFds);
+		if (rv) {
+			perror("error");
+			return exitCode;
 		}
 
 		int cpid2;
-		// Sub-parent
+		// sub-parent
 		if ((cpid2 = fork())) {
 			int status;
+			waitpid(cpid2, &status, 0);
 			close(pipeFds[1]);
 			// connects the ends of the pipe
 			dup2(pipeFds[0], 0);
-			waitpid(cpid2, &status, 0);
-			int ret = execute_ast(astR);
-			return ret;
+			exit(execute_ast(astR));
 		}
-		// Sub-child
+		// sub-child
 		else {
 			close(pipeFds[0]);
 			// duplicates the write end of the pipe to stdout
@@ -202,7 +196,7 @@ int execute_pipe(AstNode* astL, AstNode* astR) {
 			exit(execute_ast(astL));
 		}
 	}
-	*/
+	
 }
 
 // Executes left redirection operations 
@@ -322,42 +316,66 @@ int execute_operations(AstNode* ast) {
 	char* op = strdup(ast->operationToken);
 
 	if (!strcmp(op, "=")) {
+		free(op);
+		op = NULL;
 		return execute_assignment(ast->left, ast->right);
 	}
 	else if (!strcmp(op, ";")) {
+		free(op);
+		op = NULL;
 		return execute_semicolon(ast->left, ast->right);
 	}
 	else if (!strcmp(op, "\\")) {
-		return execute_forward_slash(ast->left, ast->right);
+		free(op);
+		op = NULL;
+		return execute_back_slash(ast->left, ast->right);
 	}
 	else if (!strcmp(op, "&")) {
+		free(op);
+		op = NULL;
 		return execute_background(ast->left, ast->right);
 	}
 	else if (!strcmp(op, "|")) {
+		free(op);
+		op = NULL;
 		return execute_pipe(ast->left, ast->right);
 	}
 	else if (!strcmp(op, "<")) {
+		free(op);
+		op = NULL;
 		return execute_left_arrow(ast->left, ast->right);
 	}
 	else if (!strcmp(op, ">")) {
+		free(op);
+		op = NULL;
 		return execute_right_arrow(ast->left, ast->right);
 	}
 	else if (!strcmp(op, "&&")) {
+		free(op);
+		op = NULL;
 		return execute_and(ast->left, ast->right);
 	}
 	else if (!strcmp(op, "||")) {
+		free(op);
+		op = NULL;
 		return execute_or(ast->left, ast->right);
 	}
 	else if (*op = '"') {
+		free(op);
+		op = NULL;
 		// return execute_quote(ast->left, ast->right);
 	}
 	else if (*op == '(') {
+		free(op);
+		op = NULL;
 		// TODO: I think you can do this by taking the token itself and remove the first and
 		// last chars and re-parsing it and re-executing that new ast. I will take care of
 		// that if I have time 
 	}
 
 	printf("Error: Invalid operator\n");
+	free(op);
+	op = NULL;
 	return 1;
 }
 
@@ -451,6 +469,7 @@ int execute_ast(AstNode* ast) {
 			argv[argc] = 0;
 
 			// The child *should* die here
+			// free_ast(ast);
 			execvp(argv[0], argv);
 
 			// Yell at you if the child is still alive
@@ -474,7 +493,8 @@ void execute(char* cmd) {
 	AstNode* commandTree = parse_tokens(tokens);
 	int status = execute_ast(commandTree);
 	// free_svec(tokens);
-	// free_ast(commandTree);
+	free_ast(commandTree);
+	commandTree = NULL;
 	
 	if (status == exitCode) {
 		// exits successfully
@@ -535,6 +555,8 @@ int main(int argc, char* argv[]) {
 			execute(svec_get(inputs, ii));
 		}
 		free_svec(inputs);
+		free(cmd);
+		cmd = NULL;
 	}
 	// Exited successfully
 	return 0;

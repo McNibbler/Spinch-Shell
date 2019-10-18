@@ -26,6 +26,7 @@ AstNode* parse_tokens(svec* tokens) {
 			svec* right = svec_slice(tokens, findIndex + 1, tokens->size);
 			AstNode* result = make_operation_ast_node(ops[ii]);
 			add_top_node(result, parse_tokens(left), parse_tokens(right));
+			// free_svec(tokens);
 			return result;
 		}
 	}
@@ -61,7 +62,7 @@ AstNode* parse_tokens(svec* tokens) {
 // Makes an ast node
 AstNode* make_blank_ast_node() {
 	AstNode* node = malloc(sizeof(AstNode));
-	node->operationToken = "\0";
+	node->operationToken = strdup("\0");
 	node->instructionTokens = NULL;
 	node->left = NULL;
 	node->right = NULL;
@@ -134,7 +135,7 @@ AstNode* make_operation_ast_node(char* operationToken) {
 // Makes an ast node with specified instructions
 AstNode* make_instruction_ast_node(svec* instructionTokens) {
 	AstNode* node = malloc(sizeof(AstNode));
-	node->operationToken = "\0";
+	node->operationToken = strdup("\0");
 	node->instructionTokens = instructionTokens;
 	node->left = NULL;
 	node->right = NULL;
@@ -152,19 +153,27 @@ void add_top_node(AstNode* root, AstNode* l, AstNode* r) {
 // Frees the node and its children
 void free_ast(AstNode* node) {
 	// Break at null base case
-	if (node != NULL) {
-		// Free the tokens
+	// Free the tokens
+	if (node->operationToken) {
 		free(node->operationToken);
 		node->operationToken = NULL;
-		free(node->instructionTokens);
-		node->instructionTokens = NULL;
+	}
 
-		// Frees nodes recursively
+	if (node->instructionTokens) {
+		free_svec(node->instructionTokens);
+		node->instructionTokens = NULL;
+	}
+
+	// Frees nodes recursively
+	if (node->left) {
 		free_ast(node->left);
-		free_ast(node->right);
 		node->left = NULL;
+	}
+	if (node->right) {
+		free_ast(node->right);
 		node->right = NULL;
 	}
+	free(node);
 }
 
 
